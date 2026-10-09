@@ -15,6 +15,7 @@ from .features import FeatureMapper
 from .google_services import GoogleServices
 from .handlers import register_handlers, reminder_job, set_commands
 from .services import AppServices
+from .poller import GitHubPoller, poll_job
 from .webhook import build_web_app
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO)
@@ -49,17 +50,26 @@ async def main() -> None:
     app.bot_data["svc"] = svc
     register_handlers(app)
 
-    runner = web.AppRunner(build_web_app(svc, app.bot))
+    runner = None
+    poller = None
     async with app:
         await set_commands(app)
         await app.start()
         await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
         app.job_queue.run_repeating(reminder_job, interval=1800, first=120)
 
-        await runner.setup()
-        await web.TCPSite(runner, cfg.webhook_host, cfg.webhook_port).start()
-        log.info("Bot @%s jalan · webhook di http://%s:%s%s",
-                 app.bot.username, cfg.webhook_host, cfg.webhook_port, cfg.webhook_path)
+        if cfg.github_mode in ("poll", "both"):
+            poller = GitHubPoller(svc, app.bot)
+            app.bot_data["poller"] = poller
+            app.job_queue.run_repeating(poll_job, interval=cfg.poll_interval, first=5)
+            log.info("Mode polling GitHub: %s tiap %ss%s", cfg.repo_full_name, cfg.poll_interval,
+                     "" if cfg.github_token else " (tanpa GITHUB_TOKEN — batas 60 request/jam)")
+        if cfg.github_mode in ("webhook", "both"):
+            runner = web.AppRunner(build_web_app(svc, app.bot))
+            await runner.setup()
+            await web.TCPSite(runner, cfg.webhook_host, cfg.webhook_port).start()
+            log.info("Webhook di http://%s:%s%s", cfg.webhook_host, cfg.webhook_port, cfg.webhook_path)
+        log.info("Bot @%s jalan", app.bot.username)
 
         stop = asyncio.Event()
         loop = asyncio.get_running_loop()
@@ -68,7 +78,10 @@ async def main() -> None:
         await stop.wait()
 
         log.info("Mematikan bot…")
-        await runner.cleanup()
+        if runner:
+            await runner.cleanup()
+        if poller:
+            await poller.close()
         await app.updater.stop()
         await app.stop()
 

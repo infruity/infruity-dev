@@ -52,6 +52,10 @@ class Config:
     admin_ids: frozenset[int]
     group_chat_id: int | None
     github_secret: str
+    github_mode: str
+    github_token: str
+    github_api_url: str
+    poll_interval: int
     repo_full_name: str
     branch_roles: tuple[tuple[str, str], ...]
     release_branches: frozenset[str]
@@ -79,9 +83,12 @@ class Config:
         token = os.getenv("TELEGRAM_BOT_TOKEN", "")
         if not token:
             raise RuntimeError("TELEGRAM_BOT_TOKEN wajib diisi di .env")
+        mode = os.getenv("GITHUB_MODE", "poll").strip().lower()
+        if mode not in {"poll", "webhook", "both"}:
+            raise RuntimeError("GITHUB_MODE harus poll, webhook, atau both")
         secret = os.getenv("GITHUB_WEBHOOK_SECRET", "")
-        if not secret:
-            raise RuntimeError("GITHUB_WEBHOOK_SECRET wajib diisi di .env")
+        if mode != "poll" and not secret:
+            raise RuntimeError("GITHUB_WEBHOOK_SECRET wajib diisi untuk GITHUB_MODE=webhook/both")
 
         branch_roles = []
         for item in os.getenv("BRANCH_ROLES", "frontend:fe,backend:be").split(","):
@@ -98,6 +105,12 @@ class Config:
             admin_ids=_ints(os.getenv("TELEGRAM_ADMIN_IDS")),
             group_chat_id=int(group) if group else None,
             github_secret=secret,
+            github_mode=mode,
+            github_token=os.getenv("GITHUB_TOKEN", "").strip(),
+            github_api_url=os.getenv("GITHUB_API_URL", "https://api.github.com").rstrip("/"),
+            # tanpa token GitHub hanya 60 request/jam -> minimal 90 detik
+            poll_interval=max(30 if os.getenv("GITHUB_TOKEN", "").strip() else 90,
+                              int(os.getenv("POLL_INTERVAL", "60"))),
             repo_full_name=os.getenv("GITHUB_REPO", "infruity/infruity-erp").lower(),
             branch_roles=tuple(branch_roles),
             release_branches=frozenset(

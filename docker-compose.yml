@@ -2,6 +2,7 @@ services:
   bot:
     build: .
     env_file: .env
+    # Port hanya dipakai di GITHUB_MODE=webhook/both
     ports:
       - "8080:8080"
     volumes:

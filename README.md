@@ -61,22 +61,17 @@ Setelah bot jalan:
 - Di grup, ketik `/setgroup`.
 - Kamu dan Noorman masing-masing `/start` di DM bot.
 
-### 4. Webhook GitHub
-Port 8080 harus bisa diakses dari internet lewat HTTPS. Bisa pakai reverse proxy (Caddy/Nginx) atau Cloudflare Tunnel.
+### 4. Sambungan ke GitHub
+**Mode polling (default, `GITHUB_MODE=poll`).** Bot mengecek sendiri commit baru di `frontend`/`backend`/`main` setiap `POLL_INTERVAL` detik. Server tidak perlu bisa diakses dari internet, jadi tidak perlu webhook, port, atau domain. Laporan telat maksimal 1 interval.
+- Disarankan isi `GITHUB_TOKEN`, yaitu fine-grained token dengan akses *Contents: Read-only* ke `infruity/infruity-erp`. Tanpa token, batasnya 60 request/jam dan interval otomatis minimal 90 detik.
+- Saat pertama kali jalan, bot hanya mencatat posisi branch. Push setelah itu yang dilaporkan.
+- Pelaku push ditentukan dari branch: `backend` → developer Backend, `frontend` → developer Frontend.
 
-Contoh Caddy:
-```
-bot.domainmu.com {
-    reverse_proxy localhost:8080
-}
-```
-Di GitHub, buka repo → **Settings → Webhooks → Add webhook**, lalu isi:
+**Mode webhook (`GITHUB_MODE=webhook`).** Pakai mode ini kalau server punya URL publik HTTPS (Caddy/Nginx atau Cloudflare Tunnel). Lalu di repo → **Settings → Webhooks → Add webhook**:
 - Payload URL: `https://bot.domainmu.com/github/webhook`
 - Content type: `application/json`
 - Secret: sama dengan `GITHUB_WEBHOOK_SECRET`
 - Events: **Just the push event**
-
-GitHub akan langsung mengirim `ping`. Kalau di tab *Recent Deliveries* muncul ✅, webhook sudah tersambung.
 
 ## Video > 20 MB (opsional)
 Bot API standar Telegram hanya bisa mengunduh file maksimal **20 MB**. Untuk video yang lebih besar (sampai ~2 GB):

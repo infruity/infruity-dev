@@ -99,11 +99,11 @@ async def process_push(svc: AppServices, bot, evt: PushEvent, delivery_id: str) 
                                  reply_markup=report_keyboard(push), disable_web_page_preview=True)
     db.update_push(push_id, chat_id=msg.chat_id, message_id=msg.message_id)
 
-    if not user:
+    if not user and role != "release":
+        who = f"GitHub <code>{escape(evt.pusher_login)}</code>" if evt.pusher_login else "developer"
         await notify_admins(
             bot, svc,
-            f"⚠️ Push dari GitHub <code>{escape(evt.pusher_login)}</code> ke <b>{escape(evt.branch)}</b> "
-            "belum tertaut ke akun Telegram.\nMinta orangnya /start bot dan daftar dengan username itu — "
-            "push lamanya akan otomatis tertaut.",
+            f"⚠️ Push ke <b>{escape(evt.branch)}</b> dari {who} belum tertaut ke akun Telegram.\n"
+            f"Pastikan developer {ROLE_LABELS.get(role, role)} sudah /start bot dan disetujui.",
         )
     return push_id

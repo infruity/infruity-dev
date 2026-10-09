@@ -196,6 +196,13 @@ async def cb_reg_confirm(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
         await announce(ctx.bot, svc, f"👋 {mention(row)} bergabung sebagai {ROLE_EMOJI[role]} <b>{ROLE_LABELS[role]}</b>")
         return
 
+    if not svc.cfg.admin_ids:
+        log.warning("Registrasi %s menunggu, tapi TELEGRAM_ADMIN_IDS kosong", user.id)
+        await q.edit_message_text(
+            "📨 <b>Permintaan tersimpan</b>, tapi admin bot belum diatur.\n"
+            "Minta admin mengisi TELEGRAM_ADMIN_IDS lalu kamu ketik /start lagi.", parse_mode=HTML)
+        svc.db.delete_user(user.id)
+        return
     await q.edit_message_text("📨 <b>Permintaan terkirim.</b>\nMenunggu persetujuan admin — aku kabari di sini.",
                               parse_mode=HTML)
     await notify_admins(
