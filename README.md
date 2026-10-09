@@ -89,4 +89,3 @@ Bot API standar Telegram hanya bisa mengunduh file maksimal **20 MB**. Untuk vid
 ```bash
 pip install pytest && python -m pytest -q
 ```
-# infruity-dev
